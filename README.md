@@ -10,7 +10,7 @@ Rafid Ashab Pranto
 Vinaik Chhetri
 
 
-###Keras implementatations of unet and style transfers
+### Keras implementatations of unet and style transfers
 
 https://github.com/robertomest/neural-style-keras
 
