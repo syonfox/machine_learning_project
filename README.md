@@ -8,6 +8,15 @@ Kier Lindsay
 Rafid Ashab Pranto
 
 Vinaik Chhetri
+
+
+###Keras implementatations of unet and style transfers
+
+https://github.com/robertomest/neural-style-keras
+
+https://github.com/zhixuhao/unet/blob/master/model.py
+
+
 https://github.com/misgod/fast-neural-style-keras
 
 We Will be Looking at testing the usage of pose transformation and pose extraction out of pictures. with the help of Vunet:
