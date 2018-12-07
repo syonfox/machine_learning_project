@@ -32,9 +32,9 @@ def conv(x, n_filters, kernel_size=3, stride=1, relu=True, nb_classes=1, targets
     #                  subsample=(stride, stride), init=weights_init)(o)
     o = Conv2D(n_filters,kernel_size,strides=stride, padding='valid',kernel_initializer='he_normal' )
     # o = BatchNormalization()(o)
-    if nb_classes > 1:
+    #if nb_classes > 1:
         #o = ConditionalInstanceNormalization(targets, nb_classes)(o)
-    else:
+    #else:
         #o = BatchNormalization()(o)
     if relu:
         o = Activation('relu')(o)
