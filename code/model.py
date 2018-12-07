@@ -128,7 +128,7 @@ def unet_model(img_size, width_factor=2, nb_classes=1, targets=None):
 
     o = Lambda(lambda x: 150*x, name='scaling')(conv10)
 
-    model = Model(input = inputs, output = 0)
+    model = Model(input = inputs, output = o)
 
     # model.compile(optimizer = Adam(lr = 1e-4), loss = 'binary_crossentropy', metrics = ['accuracy'])
 
