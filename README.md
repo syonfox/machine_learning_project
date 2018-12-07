@@ -10,12 +10,23 @@ Rafid Ashab Pranto
 Vinaik Chhetri
 
 
+## Concept
+
+
+
 ### Keras implementatations of unet and style transfers
 
 https://github.com/robertomest/neural-style-keras
 
 https://github.com/zhixuhao/unet/blob/master/model.py
 
+### Data Sets
+
+http://cocodataset.org/#download
+
+https://bam-dataset.org/#explore
+
+https://artuk.org/discover/artworks/view_as/grid/search/has_image:on--class_title:landscape/page/2#
 
 ### Other links
 
