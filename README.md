@@ -11,7 +11,7 @@ Vinaik Chhetri
 
 
 ## Concept
-
+Using a unet to improve detale in style tranfer
 
 
 ### Keras implementatations of unet and style transfers
