@@ -80,7 +80,7 @@ def pastiche_model(img_size, width_factor=2, nb_classes=1, targets=None):
     pastiche_net = Model(input=x, output=o)
     return pastiche_net
 
-
+#comment
 def unet_model(img_size, width_factor=2, nb_classes=1, targets=None):
     k = width_factor
 
