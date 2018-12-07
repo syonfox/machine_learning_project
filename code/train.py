@@ -57,7 +57,9 @@ if __name__ == '__main__':
     class_targets = K.placeholder(shape=(None,), dtype=tf.int32)
     # The model will be trained with 256 x 256 images of the coco dataset.
     if(args.model == "unet"):
-        model = unet_model(256)
+        model = unet_model(256,width_factor=args.width_factor,
+                           nb_classes=args.nb_classes,
+                           targets=class_targets)
     else:
         model = pastiche_model(256, width_factor=args.width_factor,
                            nb_classes=args.nb_classes,

@@ -17,7 +17,7 @@ import yaml
 import time
 from scipy.misc import imsave
 
-from model import pastiche_model
+from model import pastiche_model,unet_model
 
 if __name__ == '__main__':
 
@@ -30,7 +30,7 @@ if __name__ == '__main__':
     parser.add_argument('--use_style_name', default=False, action='store_true')
     parser.add_argument('--gpu', type=str, default='')
     parser.add_argument('--allow_growth', default=False, action='store_true')
-
+    parser.add_argument("--model", type=str, default="johnson")
     args = parser.parse_args()
 
     config_gpu(args.gpu, args.allow_growth)
@@ -45,15 +45,19 @@ if __name__ == '__main__':
     print('Creating pastiche model...')
     class_targets = K.placeholder(shape=(None,), dtype=tf.int32)
     # Intantiate the model using information stored on tha yaml file
-    pastiche_net = pastiche_model(None, width_factor=model_args.width_factor,
-                                  nb_classes=model_args.nb_classes,
-                                  targets=class_targets)
+    if(args.model == "unet"):
+        model = unet_model(None, width_factor=model_args.width_factor,
+                           nb_classes=model_args.nb_classes,
+                           targets=class_targets)
+    model = pastiche_model(None, width_factor=model_args.width_factor,
+                           nb_classes=model_args.nb_classes,
+                           targets=class_targets)
     with h5py.File(checkpoint_path + '.h5', 'r') as f:
-        pastiche_net.load_weights_from_hdf5_group(f['model_weights'])
+        model.load_weights_from_hdf5_group(f['model_weights'])
 
-    inputs = [pastiche_net.input, class_targets, K.learning_phase()]
+    inputs = [model.input, class_targets, K.learning_phase()]
 
-    transfer_style = K.function(inputs, [pastiche_net.output])
+    transfer_style = K.function(inputs, [model.output])
 
     num_batches = int(np.ceil(model_args.nb_classes / float(args.batch_size)))
 

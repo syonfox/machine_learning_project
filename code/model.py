@@ -81,7 +81,9 @@ def pastiche_model(img_size, width_factor=2, nb_classes=1, targets=None):
     return pastiche_net
 
 
-def unet_model(img_size):
+def unet_model(img_size, width_factor=2, nb_classes=1, targets=None):
+    k = width_factor
+
     inputs = Input(shape=(img_size,img_size,3))
     conv1 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(inputs)
     conv1 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv1)
@@ -121,9 +123,12 @@ def unet_model(img_size):
     conv9 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge9)
     conv9 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv9)
     conv9 = Conv2D(2, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv9)
+
     conv10 = Conv2D(1, 1, activation = 'sigmoid')(conv9)
 
-    model = Model(input = inputs, output = conv10)
+    o = Lambda(lambda x: 150*x, name='scaling')(conv10)
+
+    model = Model(input = inputs, output = 0)
 
     # model.compile(optimizer = Adam(lr = 1e-4), loss = 'binary_crossentropy', metrics = ['accuracy'])
 
