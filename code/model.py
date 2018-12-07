@@ -9,7 +9,7 @@ import keras
 #                           merge, Lambda)
 from layers import (ReflectionPadding2D, InstanceNormalization,
                     ConditionalInstanceNormalization)
-from keras.initializations import normal
+from keras.initializers import normal
 
 from keras.models import *
 from keras.layers import *
