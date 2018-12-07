@@ -35,7 +35,7 @@ def conv(x, n_filters, kernel_size=3, stride=1, relu=True, nb_classes=1, targets
     if nb_classes > 1:
         o = ConditionalInstanceNormalization(targets, nb_classes)(o)
     else:
-        o = InstanceNormalization()(o)
+        o = BatchNormalization()(o)
     if relu:
         o = Activation('relu')(o)
     return o
