@@ -134,6 +134,6 @@ if __name__ == "__main__":
     parser.add_argument('--media_filter', '-f', default=3, type=int,
                         help='media_filter size')
     parser.add_argument('--image_size', default=256, type=int)
-  parser.add_argument("--model", type=str, default="default")
+    parser.add_argument("--model", type=str, default="default")
     args = parser.parse_args()
     main(args)
