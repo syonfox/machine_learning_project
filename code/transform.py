@@ -20,6 +20,21 @@ from img_util import preprocess_image, preprocess_image_for_generating, preproce
 import nets
 
 
+def config_gpu(gpu, allow_growth):
+    # Choosing gpu
+    if gpu == '-1':
+        config = tf.ConfigProto(device_count ={'GPU': 0})
+    else:
+        if gpu == 'all' or gpu == '':
+            gpu = ''
+        config = tf.ConfigProto()
+        config.gpu_options.visible_device_list = gpu
+    if allow_growth == True:
+        config.gpu_options.allow_growth = True
+    session = tf.Session(config=config)
+    K.set_session(session)
+
+
 # from 6o6o's fork. https://github.com/6o6o/chainer-fast-neuralstyle/blob/master/generate.py
 def original_colors(original, stylized,original_color):
     # Histogram normalization in v channel
@@ -131,9 +146,14 @@ if __name__ == "__main__":
     parser.add_argument('--blend', '-b', default=0, type=float,
                         help='0~1 for blend with original image')
 
+
     parser.add_argument('--media_filter', '-f', default=3, type=int,
                         help='media_filter size')
     parser.add_argument('--image_size', default=256, type=int)
     parser.add_argument("--model", type=str, default="default")
+    parser.add_argument('--gpu', type=str, default='')
+    parser.add_argument('--allow_growth', default=False, action='store_true')
+
     args = parser.parse_args()
+    config_gpu(args.gpu, args.allow_growth)
     main(args)
