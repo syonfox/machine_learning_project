@@ -74,8 +74,8 @@ if __name__ == "__main__":
 
     f = h5py.File(args.gram_dataset_path, 'w')
 
-    f.attrs['img_names'] = img_list
-    f.attrs['img_sizes'] = img_size_list
+    f.attrs['img_names'] = [np.string_(i) for i in img_list]
+    f.attrs['img_sizes'] = [np.string_(i) for i in img_size_list]
     for name, m in zip(args.style_layers, mtx):
         f.create_dataset(name, data=m)
 
