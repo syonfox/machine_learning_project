@@ -8,8 +8,8 @@ from VGG16 import VGG16
 import img_util
 
 
-
-
+from keras.layers.normalization import BatchNormalization
+from keras.layers.core import Activation
 
 def image_transform_net(img_width,img_height,tv_weight=1):
     x = Input(shape=(img_width,img_height,3))
@@ -32,50 +32,58 @@ def image_transform_net(img_width,img_height,tv_weight=1):
         add_total_variation_loss(model.layers[-1],tv_weight)
         
     return model 
+def conv_n(nb_filter, kernal_size, activation = 'relu', padding = "same",kernel_initializer = 'he_normal'):
+    def conv_func(x):
+        x = Conv2D(nb_filter, kernal_size, strides=(1,1),padding=padding, kernel_initializer=kernel_initializer)(x)
+        x = BatchNormalization()(x)
+        #x = LeakyReLU(0.2)(x)
+        x = Activation(activation)(x)
+        return x
+    return conv_func
 
 def unet(img_width,img_height,tv_weight=1):
 
     inputs = Input(shape=(img_width,img_height,3))
-    conv1 = Conv2D(36, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(inputs)
-    conv1 = Conv2D(36, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv1)
+    conv1 = conv_n(36, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(inputs)
+    conv1 = conv_n(36, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv1)
     pool1 = MaxPooling2D(pool_size=(2, 2))(conv1)
-    conv2 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(pool1)
-    conv2 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv2)
+    conv2 = conv_n(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(pool1)
+    conv2 = conv_n(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv2)
     pool2 = MaxPooling2D(pool_size=(2, 2))(conv2)
-    conv3 = Conv2D(128, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(pool2)
-    conv3 = Conv2D(128, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv3)
+    conv3 = conv_n(128, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(pool2)
+    conv3 = conv_n(128, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv3)
     pool3 = MaxPooling2D(pool_size=(2, 2))(conv3)
-    conv4 = Conv2D(256, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(pool3)
-    conv4 = Conv2D(256, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv4)
+    conv4 = conv_n(256, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(pool3)
+    conv4 = conv_n(256, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv4)
     drop4 = Dropout(0.5)(conv4)
     pool4 = MaxPooling2D(pool_size=(2, 2))(drop4)
 
-    conv5 = Conv2D(512, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(pool4)
-    conv5 = Conv2D(512, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv5)
+    conv5 = conv_n(512, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(pool4)
+    conv5 = conv_n(512, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv5)
     drop5 = Dropout(0.5)(conv5)
 
-    up6 = Conv2D(256, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(drop5))
+    up6 = conv_n(256, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(drop5))
     merge6 = concatenate([drop4,up6], axis = 3)
-    conv6 = Conv2D(256, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge6)
-    conv6 = Conv2D(256, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv6)
+    conv6 = conv_n(256, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge6)
+    conv6 = conv_n(256, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv6)
 
-    up7 = Conv2D(128, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv6))
+    up7 = conv_n(128, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv6))
     merge7 = concatenate([conv3,up7], axis = 3)
-    conv7 = Conv2D(128, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge7)
-    conv7 = Conv2D(128, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv7)
+    conv7 = conv_n(128, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge7)
+    conv7 = conv_n(128, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv7)
 
-    up8 = Conv2D(64, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv7))
+    up8 = conv_n(64, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv7))
     merge8 = concatenate([conv2,up8], axis = 3)
-    conv8 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge8)
-    conv8 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv8)
+    conv8 = conv_n(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge8)
+    conv8 = conv_n(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv8)
 
-    up9 = Conv2D(32, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv8))
+    up9 = conv_n(32, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv8))
     merge9 = concatenate([conv1,up9], axis = 3)
-    conv9 = Conv2D(32, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge9)
-    conv9 = Conv2D(32, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv9)
-    conv9 = Conv2D(9, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv9)
+    conv9 = conv_n(32, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge9)
+    conv9 = conv_n(32, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv9)
+    conv9 = conv_n(9, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv9)
 
-    conv10 = Conv2D(3, 1, activation = 'sigmoid')(conv9)
+    conv10 = conv_n(3, 1, activation = 'sigmoid')(conv9)
 
     o = Lambda(lambda x: 150*x, name='scaling')(conv10)
 
@@ -90,6 +98,64 @@ def unet(img_width,img_height,tv_weight=1):
 
     return model
 
+
+# def unet(img_width,img_height,tv_weight=1):
+#
+#     inputs = Input(shape=(img_width,img_height,3))
+#     conv1 = Conv2D(36, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(inputs)
+#     conv1 = Conv2D(36, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv1)
+#     pool1 = MaxPooling2D(pool_size=(2, 2))(conv1)
+#     conv2 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(pool1)
+#     conv2 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv2)
+#     pool2 = MaxPooling2D(pool_size=(2, 2))(conv2)
+#     conv3 = Conv2D(128, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(pool2)
+#     conv3 = Conv2D(128, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv3)
+#     pool3 = MaxPooling2D(pool_size=(2, 2))(conv3)
+#     conv4 = Conv2D(256, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(pool3)
+#     conv4 = Conv2D(256, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv4)
+#     drop4 = Dropout(0.5)(conv4)
+#     pool4 = MaxPooling2D(pool_size=(2, 2))(drop4)
+#
+#     conv5 = Conv2D(512, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(pool4)
+#     conv5 = Conv2D(512, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv5)
+#     drop5 = Dropout(0.5)(conv5)
+#
+#     up6 = Conv2D(256, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(drop5))
+#     merge6 = concatenate([drop4,up6], axis = 3)
+#     conv6 = Conv2D(256, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge6)
+#     conv6 = Conv2D(256, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv6)
+#
+#     up7 = Conv2D(128, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv6))
+#     merge7 = concatenate([conv3,up7], axis = 3)
+#     conv7 = Conv2D(128, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge7)
+#     conv7 = Conv2D(128, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv7)
+#
+#     up8 = Conv2D(64, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv7))
+#     merge8 = concatenate([conv2,up8], axis = 3)
+#     conv8 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge8)
+#     conv8 = Conv2D(64, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv8)
+#
+#     up9 = Conv2D(32, 2, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(UpSampling2D(size = (2,2))(conv8))
+#     merge9 = concatenate([conv1,up9], axis = 3)
+#     conv9 = Conv2D(32, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(merge9)
+#     conv9 = Conv2D(32, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv9)
+#     conv9 = Conv2D(9, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(conv9)
+#
+#     conv10 = Conv2D(3, 1, activation = 'sigmoid')(conv9)
+#
+#     o = Lambda(lambda x: 150*x, name='scaling')(conv10)
+#
+#     model = Model(input = inputs, output = o)
+#
+#     # model.compile(optimizer = Adam(lr = 1e-4), loss = 'binary_crossentropy', metrics = ['accuracy'])
+#
+#     #model.summary()
+#
+#     if tv_weight > 0:
+#         add_total_variation_loss(model.layers[-1],tv_weight)
+#
+#     return model
+#
 
 def loss_net(x_in, trux_x_in,width, height,style_image_path,content_weight,style_weight):
     # Append the initial input to the FastNet input to the VGG inputs

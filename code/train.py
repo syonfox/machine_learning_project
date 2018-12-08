@@ -47,7 +47,7 @@ def main(args):
     model.summary()
 
 
-    num_epochs = 2
+    num_epochs = 5
     batch_size =  1
     #train_image_path = "images/train/"
 
@@ -80,7 +80,7 @@ def main(args):
     num_iterations = num_epochs * dataset_size
     # for it in range(args.num_iterations):
     for it in range(num_iterations):
-        if batch_idx >= batches_per_epoch:
+        if batch_idx == batches_per_epoch:
             print('Epoch done. Going back to the beginning...')
             batch_idx = 0
 
