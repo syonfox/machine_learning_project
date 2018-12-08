@@ -1,208 +1,119 @@
-'''
-This script can be used to train a pastiche network.
-'''
-
-from __future__ import print_function
-import os
-import argparse
-
+from keras.layers import Input, merge
+from keras.models import Model,Sequential
+from layers import VGGNormalize,ReflectionPadding2D,Denormalize,conv_bn_relu,res_conv,dconv_bn_nolinear
+from loss import dummy_loss,StyleReconstructionRegularizer,FeatureReconstructionRegularizer,TVRegularizer
+from keras.optimizers import Adam, SGD,RMSprop
+from keras.preprocessing.image import ImageDataGenerator
+from keras import backend as K
+from scipy.misc import imsave
 import time
-import h5py
-
 import numpy as np
-import tensorflow as tf
-import keras
-import keras.backend as K
-from keras.optimizers import Adam
-from model import pastiche_model, unet_model
-from training import get_loss_net, get_content_losses, get_style_losses, tv_loss
-from utils import preprocess_input, config_gpu, save_checkpoint, std_input_list
+import argparse
+import h5py
+from keras.callbacks import TensorBoard
+from scipy import ndimage
 
-if __name__ == '__main__':
-    def_cl = ['block3_conv3']
-    def_sl = ['block1_conv2', 'block2_conv2',
-              'block3_conv3', 'block4_conv3']
+import nets
 
-    # Argument parser
-    parser = argparse.ArgumentParser(description='Train a pastiche network.')
-    parser.add_argument('--lr', help='Learning rate.', type=float, default=0.001)
-    parser.add_argument('--content_weight', type=float, default=[1.], nargs='+')
-    parser.add_argument('--style_weight', type=float, default=[1e-4], nargs='+')
-    parser.add_argument('--tv_weight', type=float, default=[1e-4], nargs='+')
-    parser.add_argument('--content_layers', type=str, nargs='+', default=def_cl)
-    parser.add_argument('--style_layers', type=str, nargs='+', default=def_sl)
-    parser.add_argument('--width_factor', type=int, default=2)
-    parser.add_argument('--nb_classes', type=int, default=1)
-    parser.add_argument('--norm_by_channels', default=False, action='store_true')
-    parser.add_argument('--num_iterations', type=int, default=40000)
-    parser.add_argument('--save_every', type=int, default=500)
-    parser.add_argument('--batch_size', type=int, default=4)
-    parser.add_argument('--coco_path', type=str, default='data/coco/ms-coco-256.h5')
-    parser.add_argument('--gram_dataset_path', type=str, default='grams.h5')
-    parser.add_argument('--checkpoint_path', type=str, default='checkpoint.h5')
-    parser.add_argument('--gpu', type=str, default='')
-    parser.add_argument('--allow_growth', default=False, action='store_true')
-    parser.add_argument("--model", type=str, default="johnson")
-    args = parser.parse_args()
-    # Arguments parsed
 
-    # Check loss weights
-    args.style_weight = std_input_list(args.style_weight, args.nb_classes, 'Style weight')
-    args.content_weight = std_input_list(args.content_weight, args.nb_classes, 'Content weight')
-    args.tv_weight = std_input_list(args.tv_weight, args.nb_classes, 'TV weight')
 
-    config_gpu(args.gpu, args.allow_growth)
+def display_img(i,x,style,is_val=False):
+    # save current generated image
+    img = x #deprocess_image(x)
+    if is_val:
+        #img = ndimage.median_filter(img, 3)
 
-    print('Creating model...', args.model)
-    class_targets = K.placeholder(shape=(None,), dtype=tf.int32)
-    # The model will be trained with 256 x 256 images of the coco dataset.
-    if(args.model == "unet"):
-        model = unet_model(256,width_factor=args.width_factor,
-                           nb_classes=args.nb_classes,
-                           targets=class_targets)
+        fname = 'images/output/%s_%d_val.png' % (style,i)
     else:
-        model = pastiche_model(256, width_factor=args.width_factor,
-                           nb_classes=args.nb_classes,
-                           targets=class_targets)
-    x = model.input
-    o = model.output
-
-    print('Loading loss network...')
-    loss_net, outputs_dict, content_targets_dict = get_loss_net(model.output, input_tensor=model.input)
-
-    # Placeholder sizes
-    ph_sizes = {k : K.int_shape(content_targets_dict[k])[-1] for k in args.style_layers}
-
-    # Our style targets are precomputed and are fed through these placeholders
-    style_targets_dict = {k : K.placeholder(shape=(None, ph_sizes[k], ph_sizes[k])) for k in args.style_layers}
+        fname = 'images/output/%s_%d.png' % (style,i)
+    imsave(fname, img)
+    print('Image saved as', fname)
 
 
-    print('Setting up training...')
-    # Setup the loss weights as variables
-    content_weights = K.variable(args.content_weight)
-    style_weights = K.variable(args.style_weight)
-    tv_weights = K.variable(args.tv_weight)
+def main(args):
+    style_weight= args.style_weight
+    content_weight= args.content_weight
+    tv_weight= args.tv_weight
+    style= args.style_path
+    img_width = img_height =  args.image_size
 
-    style_losses = get_style_losses(outputs_dict, style_targets_dict, args.style_layers,
-                                    norm_by_channels=args.norm_by_channels)
+    style_image_path = style
 
-    content_losses = get_content_losses(outputs_dict, content_targets_dict, args.content_layers)
-
-    # Use total variation to improve local coherence
-    total_var_loss = tv_loss(model.output)
-
-
-    weighted_style_losses = []
-    weighted_content_losses = []
-
-    # Compute total loss
-    total_loss = K.variable(0.)
-    for loss in style_losses:
-        weighted_loss = K.mean(K.gather(style_weights, class_targets) * loss)
-        weighted_style_losses.append(weighted_loss)
-        total_loss += weighted_loss
-
-    for loss in content_losses:
-        weighted_loss = K.mean(K.gather(content_weights, class_targets) * loss)
-        weighted_content_losses.append(weighted_loss)
-        total_loss += weighted_loss
-
-    weighted_tv_loss = K.mean(K.gather(tv_weights, class_targets) * total_var_loss)
-    total_loss += weighted_tv_loss
+    net = nets.image_transform_net(img_width,img_height,tv_weight)
+    model = nets.loss_net(net.output,net.input,img_width,img_height,style_image_path,content_weight,style_weight)
+    model.summary()
 
 
-    ## Make training function
+    nb_epoch = 82785 *2
+    train_batchsize =  1
+    #train_image_path = "images/train/"
 
-    # Get a list of inputs
-    inputs = [model.input, class_targets] + \
-             [style_targets_dict[k] for k in args.style_layers] + \
-             [K.learning_phase()]
+    learning_rate = 1e-3 #1e-3
+    optimizer = Adam() # Adam(lr=learning_rate,beta_1=0.99)
 
-    # Get trainable params
-    params = model.trainable_weights
-    constraints = model.constraints
+    model.compile(optimizer,  dummy_loss)  # Dummy loss since we are learning from regularizes
 
-    opt = Adam(lr=args.lr)
-    updates = opt.get_updates(params, constraints, total_loss)
+    datagen = ImageDataGenerator()
 
-    # List of outputs
-    outputs = [total_loss] + weighted_content_losses + weighted_style_losses + [weighted_tv_loss]
+    dummy_y = np.zeros((train_batchsize,img_width,img_height,3)) # Dummy output, not used since we use regularizers to train
 
-    f_train = K.function(inputs, outputs, updates)
+ 
 
-    X = h5py.File(args.coco_path, 'r')['train2014']['images']
+    #model.load_weights(style+'_weights.h5',by_name=False)
+
+    skip_to = 0
+    X = h5py.File(args.train_path, 'r')['train2014']['images']
     dataset_size = X.shape[0]
-    batches_per_epoch = int(np.ceil(dataset_size / args.batch_size))
-    batch_idx = 0
 
-    print('Loading Gram matrices from dataset file...')
-    if args.norm_by_channels:
-        print('Normalizing the stored Gram matrices by the number of channels.')
-    Y = {}
-    with h5py.File(args.gram_dataset_path, 'r') as f:
-        styles = f.attrs['img_names']
-        style_sizes = f.attrs['img_sizes']
-        for k, v in f.iteritems():
-            Y[k] = np.array(v)
-            if args.norm_by_channels:
-                #Correct the Gram matrices from the dataset
-                Y[k] /= Y[k].shape[-1]
+    i=0
+    t1 = time.time()
+    #for x in datagen.flow_from_directory(args.train_path, class_mode=None, batch_size=train_batchsize,
+    #    target_size=(img_width, img_height), shuffle=False):
+    for x in datagen.flow(X, batch_size=train_batchsize, shuffle=False):
+        if i > nb_epoch:
+            break
 
-    # Get a log going
-    log = {}
-    log['args'] = args
-    log['style_names'] = styles[:args.nb_classes]
-    log['style_image_sizes'] = style_sizes
-    log['total_loss'] = []
-    log['style_loss'] = {k: [] for k in args.style_layers}
-    log['content_loss'] = {k: [] for k in args.content_layers}
-    log['tv_loss'] = []
+        if i < skip_to:
+            i+=train_batchsize
+            if i % 1000 ==0:
+                print("skip to: %d" % i)
 
-    # Strip the extension if there is one
-    checkpoint_path = os.path.splitext(args.checkpoint_path)[0]
+            continue
 
-    start_time = time.time()
-    # for it in range(args.num_iterations):
-    for it in range(args.num_iterations):
-        if batch_idx >= batches_per_epoch:
-            print('Epoch done. Going back to the beginning...')
-            batch_idx = 0
 
-        # Get the batch
-        idx = args.batch_size * batch_idx
-        batch = X[idx:idx+args.batch_size]
-        batch = preprocess_input(batch)
-        batch_idx += 1
+        hist = model.train_on_batch(x, dummy_y)
 
-        # Get class information for each image on the batch
-        batch_classes = np.random.randint(args.nb_classes, size=(args.batch_size,))
+        if i % 50 == 0:
+            print(hist,(time.time() -t1))
+            t1 = time.time()
 
-        batch_targets = [Y[l][batch_classes] for l in args.style_layers]
+        if i % 500 == 0:
+            print("epoc: ", i)
+            val_x = net.predict(x)
 
-        # Do a step
-        start_time2 = time.time()
-        out = f_train([batch, batch_classes] + batch_targets + [1.])
-        stop_time2 = time.time()
-        # Log the statistics
+            #display_img(i, x[0], style)
+            #display_img(i, val_x[0],style, True)
+            model.save_weights(style+'_weights.h5')
 
-        log['total_loss'].append(out[0])
-        offset = 1
-        for i, k in enumerate(args.content_layers):
-            log['content_loss'][k].append(out[offset + i])
-        offset += len(args.content_layers)
-        for i, k in enumerate(args.style_layers):
-            log['style_loss'][k].append(out[offset + i])
-        log['tv_loss'].append(out[-1])
+        i+=train_batchsize
 
-        stop_time = time.time()
-        print('Iteration %d/%d: loss = %f. t = %f (%f)' %(it + 1,
-              args.num_iterations, out[0], stop_time - start_time,
-              stop_time2 - start_time2))
 
-        if not ((it + 1) % args.save_every):
-            print('Saving checkpoint in %s.h5...' %(checkpoint_path))
-            save_checkpoint(checkpoint_path, model, log)
-            print('Checkpoint saved.')
 
-        start_time = time.time()
-    save_checkpoint(checkpoint_path, model, log)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Real-time style transfer')
+        
+    parser.add_argument('--style_path', '-s', type=str, required=True,
+                        help='style image file name without extension')
+    parser.add_argument('--train_path', '-t', type=str, default='data/ms-coco-256.h5',
+                        help='style image file name without extension')
+          
+    parser.add_argument('--output', '-o', default=None, type=str,
+                        help='output model file path without extension')
+    parser.add_argument('--tv_weight', default=1e-6, type=float,
+                        help='weight of total variation regularization according to the paper to be set between 10e-4 and 10e-6.')
+    parser.add_argument('--content_weight', default=1.0, type=float)
+    parser.add_argument('--style_weight', default=4.0, type=float)
+    parser.add_argument('--image_size', default=256, type=int)
+
+    args = parser.parse_args()
+    main(args)
