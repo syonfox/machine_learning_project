@@ -1,6 +1,6 @@
 import os, json, argparse
 from threading import Thread
-from Queue import Queue
+from queue import Queue
 
 import numpy as np
 from scipy.misc import imread, imresize
@@ -60,9 +60,9 @@ def add_data(h5_file, image_dir, prefix, args):
         img = img[:H_crop, :W_crop]
         img = imresize(img, (args.height, args.width))
       except (ValueError, IndexError) as e:
-        print filename
-        print img.shape, img.dtype
-        print e
+        print(filename)
+        print(img.shape, img.dtype)
+        print(e)
       input_queue.task_done()
       output_queue.put((idx, img))
 
@@ -84,10 +84,10 @@ def add_data(h5_file, image_dir, prefix, args):
       output_queue.task_done()
       num_written = num_written + 1
       if num_written % 100 == 0:
-        print 'Copied %d / %d images' % (num_written, num_images)
+        print('Copied %d / %d images' % (num_written, num_images))
 
   # Start the read workers.
-  for i in xrange(args.num_workers):
+  for i in range(args.num_workers):
     t = Thread(target=read_worker)
     t.daemon = True
     t.start()
@@ -113,3 +113,5 @@ if __name__ == '__main__':
 
     if args.include_val != 0:
       add_data(f, args.val_dir, 'val2014', args)
+
+  print("Done.")
