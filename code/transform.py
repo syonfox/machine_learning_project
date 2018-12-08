@@ -58,8 +58,7 @@ def load_weights(model,file_path):
     for i, layer in enumerate(model.layers[:31]):
         g = f[layer_names[i]]
         weights = [g[name] for name in g.attrs['weight_names']]
-        layer.set_weigh
-        ts(weights)
+        layer.set_weights(weights)
 
     f.close()
     
@@ -77,14 +76,19 @@ def main(args):
     aspect_ratio, x = preprocess_reflect_image(input_file, size_multiple=4)
 
     img_width= img_height = x.shape[1]
-    net = nets.image_transform_net(img_width,img_height)
+    #net = nets.image_transform_net(img_width,img_height)
+    if(args.model == "unet"):
+        net = nets.unet(img_width,img_height)
+    else:
+        net = nets.image_transform_net(img_width,img_height)
+
     model = nets.loss_net(net.output,net.input,img_width,img_height,"",0,0)
 
     #model.summary()
 
     model.compile(Adam(),  dummy_loss)  # Dummy loss since we are learning from regularizes
 
-    model.load_weights("pretrained/"+style+'_weights.h5',by_name=False)
+    model.load_weights(style+'weights.h5',by_name=False)
 
     
     t1 = time.time()
@@ -113,7 +117,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Real-time style transfer')
 
     parser.add_argument('--style', '-s', type=str, required=True,
-                        help='style image file name without extension')
+                        help='path to style folder style image file name without extension')
 
     parser.add_argument('--input', '-i', default=None, required=True,type=str,
                         help='input file name')
@@ -130,6 +134,6 @@ if __name__ == "__main__":
     parser.add_argument('--media_filter', '-f', default=3, type=int,
                         help='media_filter size')
     parser.add_argument('--image_size', default=256, type=int)
-
+  parser.add_argument("--model", type=str, default="default")
     args = parser.parse_args()
     main(args)
