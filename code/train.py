@@ -39,7 +39,10 @@ def main(args):
 
     style_image_path = style
 
-    net = nets.image_transform_net(img_width,img_height,tv_weight)
+    if(args.model == "unet"):
+        net = nets.unet(img_width,img_height,tv_weight)
+    else:
+        net = nets.image_transform_net(img_width,img_height,tv_weight)
     model = nets.loss_net(net.output,net.input,img_width,img_height,style_image_path,content_weight,style_weight)
     model.summary()
 
@@ -114,6 +117,7 @@ if __name__ == "__main__":
     parser.add_argument('--content_weight', default=1.0, type=float)
     parser.add_argument('--style_weight', default=4.0, type=float)
     parser.add_argument('--image_size', default=256, type=int)
+    parser.add_argument("--model", type=str, default="default")
 
     args = parser.parse_args()
     main(args)
