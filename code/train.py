@@ -47,8 +47,8 @@ def main(args):
     model.summary()
 
 
-    nb_epoch = 82785 *2
-    train_batchsize =  1
+    num_epochs = 2
+    batch_size =  1
     #train_image_path = "images/train/"
 
     learning_rate = 1e-3 #1e-3
@@ -58,47 +58,78 @@ def main(args):
 
     datagen = ImageDataGenerator()
 
-    dummy_y = np.zeros((train_batchsize,img_width,img_height,3)) # Dummy output, not used since we use regularizers to train
+    dummy_y = np.zeros((batch_size,img_width,img_height,3)) # Dummy output, not used since we use regularizers to train
 
  
 
     #model.load_weights(style+'_weights.h5',by_name=False)
 
     skip_to = 0
+    # X = h5py.File(args.train_path, 'r')['train2014']['images']
+    # dataset_size = X.shape[0]
+
     X = h5py.File(args.train_path, 'r')['train2014']['images']
     dataset_size = X.shape[0]
+    batches_per_epoch = int(np.ceil(dataset_size / batch_size))
+    batch_idx = 0
 
     i=0
     t1 = time.time()
     #for x in datagen.flow_from_directory(args.train_path, class_mode=None, batch_size=train_batchsize,
     #    target_size=(img_width, img_height), shuffle=False):
-    for x in datagen.flow(X, batch_size=train_batchsize, shuffle=False):
-        if i > nb_epoch:
-            break
+    num_iterations = num_epochs * dataset_size
+    # for it in range(args.num_iterations):
+    for it in range(num_iterations):
+        if batch_idx >= batches_per_epoch:
+            print('Epoch done. Going back to the beginning...')
+            batch_idx = 0
 
-        if i < skip_to:
-            i+=train_batchsize
-            if i % 1000 ==0:
-                print("skip to: %d" % i)
-
-            continue
-
-
+        # Get the batch
+        idx = batch_size * batch_idx
+        x = X[idx:idx+batch_size] #batch
+        #batch = preprocess_input(batch)
+        batch_idx += 1
         hist = model.train_on_batch(x, dummy_y)
 
-        if i % 50 == 0:
+        if it % 50 == 0:
             print(hist,(time.time() -t1))
             t1 = time.time()
 
-        if i % 500 == 0:
-            print("epoc: ", i)
+        if it % 500 == 0:
+            print("epoc: ", it)
             val_x = net.predict(x)
 
-            display_img(i, x[0], args.output_path)
-            display_img(i, val_x[0],args.output_path, True)
+            display_img(it, x[0], args.output_path)
+            display_img(it, val_x[0],args.output_path, True)
             model.save_weights(args.output_path+'weights.h5')
 
-        i+=train_batchsize
+    # for x in datagen.flow(X, batch_size=train_batchsize, shuffle=False):
+    #     if i > nb_epoch:
+    #         break
+    #
+    #     if i < skip_to:
+    #         i+=train_batchsize
+    #         if i % 1000 ==0:
+    #             print("skip to: %d" % i)
+    #
+    #         continue
+    #
+    #
+    #     hist = model.(x, dummy_y)
+    #
+    #     if i % 50 == 0:
+    #         print(hist,(time.time() -t1))
+    #         t1 = time.time()
+    #
+    #     if i % 500 == 0:
+    #         print("epoc: ", i)
+    #         val_x = net.predict(x)
+    #
+    #         display_img(i, x[0], args.output_path)
+    #         display_img(i, val_x[0],args.output_path, True)
+    #         model.save_weights(args.output_path+'weights.h5')
+    #
+    #     i+=train_batchsize
 
 
 
