@@ -17,15 +17,15 @@ import nets
 
 
 
-def display_img(i,x,style,is_val=False):
+def display_img(i,x,out_path,is_val=False):
     # save current generated image
     img = x #deprocess_image(x)
     if is_val:
         #img = ndimage.median_filter(img, 3)
 
-        fname = 'images/output/%s_%d_val.png' % (style,i)
+        fname = '%s_%d_val.png' % (out_path,i)
     else:
-        fname = 'images/output/%s_%d.png' % (style,i)
+        fname = '%s_%d.png' % (out_path,i)
     imsave(fname, img)
     print('Image saved as', fname)
 
@@ -94,9 +94,9 @@ def main(args):
             print("epoc: ", i)
             val_x = net.predict(x)
 
-            #display_img(i, x[0], style)
-            #display_img(i, val_x[0],style, True)
-            model.save_weights(style+'_weights.h5')
+            display_img(i, x[0], args.output_path)
+            display_img(i, val_x[0],args.output_path, True)
+            model.save_weights(args.output_path+'weights.h5')
 
         i+=train_batchsize
 
@@ -107,10 +107,10 @@ if __name__ == "__main__":
         
     parser.add_argument('--style_path', '-s', type=str, required=True,
                         help='style image file name without extension')
-    parser.add_argument('--train_path', '-t', type=str, default='data/ms-coco-256.h5',
+    parser.add_argument('--train_path', '-t', type=str, default='./data/ms-coco-256.h5',
                         help='style image file name without extension')
           
-    parser.add_argument('--output', '-o', default=None, type=str,
+    parser.add_argument('--output_path', '-o', default="./save/", type=str,
                         help='output model file path without extension')
     parser.add_argument('--tv_weight', default=1e-6, type=float,
                         help='weight of total variation regularization according to the paper to be set between 10e-4 and 10e-6.')
