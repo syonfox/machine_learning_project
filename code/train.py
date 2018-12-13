@@ -127,7 +127,7 @@ def main(args):
             #print(hist,(time.time() -t1))
             #hist.
             print("Epoch:", epoch, ", Iteration:", it,", Loss: ",hist,", Time: ",(time.time() -t1))
-            itlog = { 'epoch': epoch, 'interation': it, 'loss':float(hist),'time': float((time.time() -t1))}
+            itlog = { 'epoch': epoch, 'interation': it, 'loss':float(hist),'time': float((time.time())), "delta_time": float((time.time()-t1))}
             #print(itlog)
             log.write(json.dumps(itlog))
             t1 = time.time()
