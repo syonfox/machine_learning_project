@@ -10,12 +10,26 @@ import time
 import numpy as np
 import argparse
 import h5py
+import  tensorflow as tf
 from keras.callbacks import TensorBoard
 from scipy import ndimage
+import json
 
 import nets
 
-
+def config_gpu(gpu, allow_growth):
+    # Choosing gpu
+    if gpu == '-1':
+        config = tf.ConfigProto(device_count ={'GPU': 0})
+    else:
+        if gpu == 'all' or gpu == '':
+            gpu = ''
+        config = tf.ConfigProto()
+        config.gpu_options.visible_device_list = gpu
+    if allow_growth == True:
+        config.gpu_options.allow_growth = True
+    session = tf.Session(config=config)
+    K.set_session(session)
 
 def display_img(i,x,out_path,is_val=False):
     # save current generated image
@@ -23,9 +37,9 @@ def display_img(i,x,out_path,is_val=False):
     if is_val:
         #img = ndimage.median_filter(img, 3)
 
-        fname = '%s_%d_val.png' % (out_path,i)
+        fname = '%s%d_val.png' % (out_path,i)
     else:
-        fname = '%s_%d.png' % (out_path,i)
+        fname = '%s%d_x.png' % (out_path,i)
     imsave(fname, img)
     print('Image saved as', fname)
 
@@ -36,7 +50,7 @@ def main(args):
     tv_weight= args.tv_weight
     style= args.style_path
     img_width = img_height =  args.image_size
-
+    save_interval = args.save_interval
     style_image_path = style
 
     if(args.model == "unet"):
@@ -47,16 +61,14 @@ def main(args):
     model.summary()
 
 
-    num_epochs = 5
+    num_epochs = 2
     batch_size =  1
-    #train_image_path = "images/train/"
-
     learning_rate = 1e-3 #1e-3
     optimizer = Adam() # Adam(lr=learning_rate,beta_1=0.99)
 
     model.compile(optimizer,  dummy_loss)  # Dummy loss since we are learning from regularizes
 
-    datagen = ImageDataGenerator()
+    #datagen = ImageDataGenerator()
 
     dummy_y = np.zeros((batch_size,img_width,img_height,3)) # Dummy output, not used since we use regularizers to train
 
@@ -68,20 +80,40 @@ def main(args):
     # X = h5py.File(args.train_path, 'r')['train2014']['images']
     # dataset_size = X.shape[0]
 
+    # Load the data
     X = h5py.File(args.train_path, 'r')['train2014']['images']
     dataset_size = X.shape[0]
     batches_per_epoch = int(np.ceil(dataset_size / batch_size))
     batch_idx = 0
 
+
+
     i=0
     t1 = time.time()
     #for x in datagen.flow_from_directory(args.train_path, class_mode=None, batch_size=train_batchsize,
     #    target_size=(img_width, img_height), shuffle=False):
+    epoch = 0
     num_iterations = num_epochs * dataset_size
     # for it in range(args.num_iterations):
+
+    log = open(args.output_path + "log.txt", "w+")
+
+    #log.write("Training "+ num_epochs+ " epochs in "+ num_iterations+ "interations using model: "+ args.model)
+    #log.write("<->")
+    # log.write("Epochs:", num_epochs)
+    # log.write("Iterations:", num_iterations)
+    # log.write("StyleWeight:", style_weight)
+    # log.write("ContentWeight:", content_weight)
+    # log.write("TVWeight:", tv_weight)
+
+    info = {'epochs': num_epochs, 'interations': num_iterations, 'style_weight': style_weight, 'content_weight': content_weight, 'tv_weight':tv_weight, 'learning_rate':learning_rate}
+    log.write(json.dumps(info))
+
+
     for it in range(num_iterations):
         if batch_idx == batches_per_epoch:
             print('Epoch done. Going back to the beginning...')
+            epoch += 1
             batch_idx = 0
 
         # Get the batch
@@ -91,17 +123,30 @@ def main(args):
         batch_idx += 1
         hist = model.train_on_batch(x, dummy_y)
 
-        if it % 50 == 0:
-            print(hist,(time.time() -t1))
+        if it % 100 == 0:
+            #print(hist,(time.time() -t1))
+            #hist.
+            print("Epoch:", epoch, ", Iteration:", it,", Loss: ",hist,", Time: ",(time.time() -t1))
+            itlog = { 'epoch': epoch, 'interation': it, 'loss':float(hist),'time': float((time.time() -t1))}
+            #print(itlog)
+            log.write(json.dumps(itlog))
             t1 = time.time()
 
         if it % 500 == 0:
-            print("epoc: ", it)
+            print("Validating/Saving...Epoch:", epoch, ", Iteration:", it,", Loss: ",hist)
+            #print()
             val_x = net.predict(x)
 
             display_img(it, x[0], args.output_path)
             display_img(it, val_x[0],args.output_path, True)
             model.save_weights(args.output_path+'weights.h5')
+            print("Done.")
+        if it % save_interval == 0:
+            print("Saving...")
+            model.save_weights(args.output_path+str(it)+'_weights.h5')
+            print("Done.")
+
+
 
     # for x in datagen.flow(X, batch_size=train_batchsize, shuffle=False):
     #     if i > nb_epoch:
@@ -149,6 +194,7 @@ if __name__ == "__main__":
     parser.add_argument('--style_weight', default=4.0, type=float)
     parser.add_argument('--image_size', default=256, type=int)
     parser.add_argument("--model", type=str, default="default")
-
+    parser.add_argument("--save_interval", type=int, default=25000)
+    #config_gpu(args.gpu, args.allow_growth)
     args = parser.parse_args()
     main(args)
