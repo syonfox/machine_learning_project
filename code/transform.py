@@ -103,7 +103,7 @@ def main(args):
 
     model.compile(Adam(),  dummy_loss)  # Dummy loss since we are learning from regularizes
 
-    model.load_weights(style+'weights.h5',by_name=False)
+    model.load_weights(style,by_name=False)
 
     
     t1 = time.time()
@@ -132,7 +132,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Real-time style transfer')
 
     parser.add_argument('--style', '-s', type=str, required=True,
-                        help='path to style folder style image file name without extension')
+                        help='path to the traind weights for your style')
 
     parser.add_argument('--input', '-i', default=None, required=True,type=str,
                         help='input file name')
